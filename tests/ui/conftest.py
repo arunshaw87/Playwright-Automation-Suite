@@ -79,9 +79,11 @@ def auth_storage_state(browser: Browser, tmp_path_factory: pytest.TempPathFactor
 @pytest.fixture(scope="function")
 def logged_in_page(browser: Browser, auth_storage_state: str) -> Page:
     """
-    Function-scoped authenticated page.
-    Creates a *fresh* browser context from the saved storage state so every
-    test starts with a clean cart and DOM — no state bleed between tests.
+    Function-scoped authenticated page. Intentionally function-scoped rather
+    than session-scoped to guarantee test isolation — each test gets a pristine
+    cart and DOM by loading from the session-cached ``auth_storage_state``
+    snapshot. Login cost is O(1) per session; isolation is O(1) per test.
+    See README "Fixture Design" section for full rationale.
     """
     context = browser.new_context(
         base_url=BASE_URL,
