@@ -93,12 +93,17 @@ class BasePage:
         swipe_down(self.driver)
 
     def take_screenshot(self, name: str) -> str | None:
-        """Save a screenshot to reports/screenshots/<name>.png. Returns the path."""
+        """
+        Save an Appium base64 screenshot to reports/screenshots/<name>.png.
+        Returns the absolute path string, or None on failure.
+        """
+        import base64
         screenshots_dir = _MOBILE_DIR / "reports" / "screenshots"
         screenshots_dir.mkdir(parents=True, exist_ok=True)
         path = screenshots_dir / f"{name}.png"
         try:
-            self.driver.save_screenshot(str(path))
+            screenshot_b64: str = self.driver.get_screenshot_as_base64()
+            path.write_bytes(base64.b64decode(screenshot_b64))
             logger.info("Screenshot saved: %s", path)
             return str(path)
         except Exception as exc:

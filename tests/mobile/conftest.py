@@ -9,6 +9,7 @@ driver           : function — Resolves to Android or iOS driver based on MOBIL
 """
 from __future__ import annotations
 
+import base64
 import logging
 import os
 from pathlib import Path
@@ -21,11 +22,26 @@ MOBILE_PLATFORM = os.environ.get("MOBILE_PLATFORM", "android").lower()
 APPIUM_SERVER_URL = os.environ.get("APPIUM_SERVER_URL", "http://localhost:4723")
 
 _MOBILE_DIR = Path(__file__).parent
+_REPORTS_DIR = _MOBILE_DIR / "reports"
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    for sub in ("reports/html", "reports/junit", "reports/screenshots"):
-        (_MOBILE_DIR / sub).mkdir(parents=True, exist_ok=True)
+    """
+    Create report directories and normalise all output paths to absolute so
+    that the suite produces consistent artefacts regardless of the working
+    directory from which pytest is invoked (e.g. repo root vs tests/mobile/).
+    """
+    for sub in ("html", "junit", "screenshots"):
+        (_REPORTS_DIR / sub).mkdir(parents=True, exist_ok=True)
+
+    html_report = str(_REPORTS_DIR / "html" / "report.html")
+    junit_report = str(_REPORTS_DIR / "junit" / "results.xml")
+
+    if hasattr(config, "option"):
+        if hasattr(config.option, "htmlpath"):
+            config.option.htmlpath = html_report
+        if hasattr(config.option, "xmlpath"):
+            config.option.xmlpath = junit_report
 
 
 def _appium_available() -> bool:
@@ -116,7 +132,7 @@ def driver(request):
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
-    """Capture screenshot on test failure."""
+    """Capture screenshot on test failure using Appium base64 screenshot."""
     outcome = yield
     report = outcome.get_result()
     if report.when == "call" and report.failed:
@@ -127,11 +143,12 @@ def pytest_runtest_makereport(item, call):
         )
         if drv:
             try:
-                screenshots_dir = _MOBILE_DIR / "reports" / "screenshots"
+                screenshots_dir = _REPORTS_DIR / "screenshots"
                 screenshots_dir.mkdir(parents=True, exist_ok=True)
                 safe_name = item.nodeid.replace("::", "_").replace("/", "_")
                 path = screenshots_dir / f"{safe_name}.png"
-                drv.save_screenshot(str(path))
+                screenshot_b64: str = drv.get_screenshot_as_base64()
+                path.write_bytes(base64.b64decode(screenshot_b64))
                 logger.info("Failure screenshot saved: %s", path)
             except Exception as exc:
                 logger.warning("Could not save screenshot on failure: %s", exc)
