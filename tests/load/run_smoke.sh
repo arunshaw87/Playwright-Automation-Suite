@@ -3,15 +3,16 @@
 # Usage: ./run_smoke.sh [host]
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOST="${1:-${LOCUST_HOST:-http://localhost:80}}"
-REPORTS_DIR="reports/load"
+REPORTS_DIR="$SCRIPT_DIR/reports/load"
 mkdir -p "$REPORTS_DIR"
 
 echo "Running SMOKE load test against $HOST"
 echo "  Users: 5 | Spawn rate: 1/s | Duration: 1m"
 
 locust \
-  -f locustfile.py \
+  -f "$SCRIPT_DIR/locustfile.py" \
   --headless \
   --users 5 \
   --spawn-rate 1 \
