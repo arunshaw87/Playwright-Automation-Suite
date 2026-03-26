@@ -4,15 +4,15 @@ version: "3.9"
 # Test orchestration
 #
 # Usage:
-#   docker compose run api-tests        # API tests only
-#   docker compose run ui-tests         # UI tests (Chromium by default)
-#   docker compose run load-tests       # Smoke load test
-#   docker compose up api-server        # API server only (for manual testing)
+#   docker compose run --rm api-tests        # API tests only
+#   docker compose run --rm ui-tests         # UI tests (Chromium by default)
+#   docker compose run --rm load-tests       # Smoke load test
+#   docker compose up api-server             # API server only (for manual testing)
 # ============================================================
 
 services:
   # --------------------------------------------------------
-  # API Server (Express)
+  # API Server (Express — built from source)
   # --------------------------------------------------------
   api-server:
     build:
@@ -20,6 +20,7 @@ services:
       dockerfile: artifacts/api-server/Dockerfile
     environment:
       PORT: "80"
+      NODE_ENV: production
       DATABASE_URL: "${DATABASE_URL:-}"
     ports:
       - "8080:80"
@@ -28,10 +29,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 20s
 
   # --------------------------------------------------------
-  # API Tests
+  # API Tests (Pytest + HTTPX + Pydantic v2)
   # --------------------------------------------------------
   api-tests:
     build:
@@ -49,7 +50,7 @@ services:
     command: ["tests/", "--tb=short", "-v"]
 
   # --------------------------------------------------------
-  # UI Tests (Playwright + POM)
+  # UI Tests (Pytest + Playwright + POM)
   # --------------------------------------------------------
   ui-tests:
     build:
@@ -63,7 +64,7 @@ services:
     command: ["tests/", "--tb=short", "-v", "--browser=${BROWSER:-chromium}"]
 
   # --------------------------------------------------------
-  # Load Tests (Locust — smoke profile)
+  # Load Tests (Locust — smoke profile by default)
   # --------------------------------------------------------
   load-tests:
     build:
@@ -86,6 +87,8 @@ services:
       - "1"
       - "--run-time"
       - "1m"
+      - "--host"
+      - "http://api-server:80"
       - "--html"
       - "reports/load/smoke_report.html"
       - "--csv"

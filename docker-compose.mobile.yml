@@ -8,12 +8,12 @@ version: "3.9"
 #   - An AVD created (e.g., Pixel_5_API_33)
 #   - KVM hardware acceleration for emulator performance
 #
+# For cloud execution (BrowserStack, Sauce Labs), set:
+#   APPIUM_SERVER_URL=https://hub-cloud.browserstack.com/wd/hub
+#
 # Usage:
 #   docker compose -f docker-compose.mobile.yml up appium-server
 #   docker compose -f docker-compose.mobile.yml run mobile-tests
-#
-# For cloud execution (BrowserStack, Sauce Labs), set:
-#   APPIUM_SERVER_URL=https://hub-cloud.browserstack.com/wd/hub
 # ============================================================
 
 services:
@@ -28,7 +28,6 @@ services:
       APPIUM_LOG_LEVEL: info
     volumes:
       - /dev/bus/usb:/dev/bus/usb   # Physical device access (optional)
-    network_mode: host
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4723/status"]
       interval: 10s
@@ -38,6 +37,8 @@ services:
 
   # --------------------------------------------------------
   # Mobile Tests
+  # Dockerfile.mobile is defined below; builds from tests/mobile/
+  # using the same python:3.13-slim base as other test images.
   # --------------------------------------------------------
   mobile-tests:
     build:
@@ -56,4 +57,3 @@ services:
       IOS_APP_PATH: "${IOS_APP_PATH:-}"
     volumes:
       - ./tests/mobile/reports:/app/tests/mobile/reports
-    network_mode: host

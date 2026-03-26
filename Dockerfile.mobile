@@ -1,0 +1,20 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+COPY tests/mobile/requirements-mobile.txt .
+RUN pip install --no-cache-dir -r requirements-mobile.txt
+
+COPY tests/mobile/ ./tests/mobile/
+
+WORKDIR /app/tests/mobile
+
+RUN mkdir -p reports/junit reports/html reports/screenshots
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    APPIUM_SERVER_URL=http://appium-server:4723 \
+    MOBILE_PLATFORM=android
+
+ENTRYPOINT ["python", "-m", "pytest"]
+CMD ["tests/", "--tb=short", "-v"]

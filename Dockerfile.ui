@@ -19,5 +19,5 @@ WORKDIR /app/tests/ui
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-ENTRYPOINT ["python", "-m", "pytest", "tests/"]
-CMD ["--tb=short", "-v"]
+ENTRYPOINT ["python", "-m", "pytest"]
+CMD ["tests/", "--tb=short", "-v"]

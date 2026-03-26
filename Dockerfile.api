@@ -13,5 +13,5 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     API_BASE_URL=http://api-server:80
 
-ENTRYPOINT ["python", "-m", "pytest", "tests/"]
-CMD ["--tb=short", "-v"]
+ENTRYPOINT ["python", "-m", "pytest"]
+CMD ["tests/", "--tb=short", "-v"]

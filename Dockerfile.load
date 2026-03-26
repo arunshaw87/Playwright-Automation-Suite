@@ -9,6 +9,8 @@ COPY tests/load/ ./tests/load/
 
 WORKDIR /app/tests/load
 
+RUN mkdir -p reports/load
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     LOCUST_HOST=http://api-server:80

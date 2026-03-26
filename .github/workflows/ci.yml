@@ -8,11 +8,13 @@ on:
 
 env:
   PYTHON_VERSION: "3.13"
+  NODE_VERSION: "24"
   API_BASE_URL: "http://localhost:80"
 
 jobs:
   # ============================================================
-  # API Tests — always runs (no external dependencies)
+  # API Tests — always runs, skips endpoints that are not yet
+  # implemented (404 responses are treated as graceful skips).
   # ============================================================
   api-tests:
     name: API Tests
@@ -40,14 +42,28 @@ jobs:
       - name: Install API test dependencies
         run: pip install -r requirements-api.txt
 
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
       - name: Start API server
         working-directory: .
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @workspace/api-server run dev &
-          echo "Waiting for API server to start..."
+          pnpm --filter @workspace/api-server run build
+          pnpm --filter @workspace/api-server run start &
+          echo "Waiting for API server..."
           timeout 30 bash -c 'until curl -sf http://localhost:80/api/healthz; do sleep 1; done'
           echo "API server is ready"
+        env:
+          NODE_ENV: production
+          PORT: "80"
 
       - name: Run API tests
         env:
@@ -55,18 +71,20 @@ jobs:
         run: |
           python -m pytest tests/ \
             --tb=short \
-            -v \
-            --junitxml=reports/junit/results.xml
+            -v
 
-      - name: Upload JUnit XML report
+      - name: Upload JUnit XML + HTML reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: api-test-results
-          path: tests/api/reports/junit/results.xml
+          path: |
+            tests/api/reports/junit/
+            tests/api/reports/html/
 
   # ============================================================
   # UI Tests — browser matrix (Chromium and Firefox)
+  # Targets https://www.saucedemo.com (public demo site)
   # ============================================================
   ui-tests:
     name: UI Tests (${{ matrix.browser }})
@@ -108,21 +126,21 @@ jobs:
           python -m pytest tests/ \
             --browser ${{ matrix.browser }} \
             --tb=short \
-            -v \
-            --junitxml=reports/junit/results-${{ matrix.browser }}.xml
+            -v
 
-      - name: Upload test results
+      - name: Upload test results and screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ui-test-results-${{ matrix.browser }}
           path: |
             tests/ui/reports/junit/
+            tests/ui/reports/html/
             tests/ui/reports/screenshots/
 
   # ============================================================
-  # Load Tests — smoke profile only in CI (headless, 1 min, 5 users)
-  # Runs after API tests pass
+  # Load Tests — smoke profile only in CI (1 min, 5 users)
+  # Runs after API tests pass to confirm the server is stable
   # ============================================================
   load-tests-smoke:
     name: Load Tests (Smoke)
@@ -151,12 +169,27 @@ jobs:
       - name: Install Locust
         run: pip install -r requirements-load.txt
 
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
       - name: Start API server
         working-directory: .
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @workspace/api-server run dev &
+          pnpm --filter @workspace/api-server run build
+          pnpm --filter @workspace/api-server run start &
           timeout 30 bash -c 'until curl -sf http://localhost:80/api/healthz; do sleep 1; done'
+          echo "API server ready"
+        env:
+          NODE_ENV: production
+          PORT: "80"
 
       - name: Run Locust smoke test
         run: |
@@ -180,8 +213,8 @@ jobs:
           path: tests/load/reports/load/
 
   # ============================================================
-  # Mobile Tests — manual / device-cloud only, skipped in default CI
-  # Set ENABLE_MOBILE_TESTS=true on the runner to activate
+  # Mobile Tests — opt-in via repository variable ENABLE_MOBILE_TESTS
+  # Requires an Appium server and device/emulator.
   # ============================================================
   mobile-tests:
     name: Mobile Tests
@@ -200,6 +233,14 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-mobile-${{ hashFiles('tests/mobile/requirements-mobile.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-mobile-
+
       - name: Install mobile test dependencies
         run: pip install -r requirements-mobile.txt
 
@@ -211,8 +252,7 @@ jobs:
         run: |
           python -m pytest tests/ \
             --tb=short \
-            -v \
-            --junitxml=reports/junit/results.xml
+            -v
 
       - name: Upload mobile test results
         if: always()
