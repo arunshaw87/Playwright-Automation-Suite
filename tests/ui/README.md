@@ -48,8 +48,16 @@ playwright install
 ## Running Tests
 
 ### All tests (Chromium, default)
+
+Run from the `tests/ui/` directory (recommended — `pytest.ini` sets `pythonpath = .` which resolves `pages.*` imports):
 ```bash
+cd tests/ui
 pytest tests/ --browser chromium
+```
+
+Or run from the repo root by pointing at the `tests/ui/` config:
+```bash
+pytest tests/ui/tests/ --browser chromium -c tests/ui/pytest.ini
 ```
 
 ### Smoke tests only
