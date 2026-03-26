@@ -63,6 +63,69 @@ class TestInventorySorting:
 
 @pytest.mark.regression
 @pytest.mark.inventory
+class TestInventoryFiltering:
+    """
+    SauceDemo exposes product filtering via the sort dropdown.
+    These tests verify that the sort/filter control updates the displayed
+    product list to match the selected filter criteria.
+    """
+
+    def test_filter_by_name_az_shows_first_item_alphabetically(
+        self, logged_in_page: Page
+    ) -> None:
+        inventory = InventoryPage(logged_in_page)
+        inventory.sort_by("az")
+        names = inventory.get_item_names()
+        assert names[0] == sorted(names)[0], (
+            f"First item '{names[0]}' should be alphabetically first after A-Z filter"
+        )
+
+    def test_filter_by_name_za_shows_last_item_alphabetically_first(
+        self, logged_in_page: Page
+    ) -> None:
+        inventory = InventoryPage(logged_in_page)
+        inventory.sort_by("za")
+        names = inventory.get_item_names()
+        assert names[0] == sorted(names)[-1], (
+            f"First item '{names[0]}' should be alphabetically last after Z-A filter"
+        )
+
+    def test_filter_by_price_lohi_lowest_price_is_first(
+        self, logged_in_page: Page
+    ) -> None:
+        inventory = InventoryPage(logged_in_page)
+        inventory.sort_by("lohi")
+        prices = inventory.get_item_prices()
+        numeric = [float(p.replace("$", "")) for p in prices]
+        assert numeric[0] == min(numeric), (
+            f"Lowest price ${numeric[0]} should appear first after low-to-high filter"
+        )
+
+    def test_filter_by_price_hilo_highest_price_is_first(
+        self, logged_in_page: Page
+    ) -> None:
+        inventory = InventoryPage(logged_in_page)
+        inventory.sort_by("hilo")
+        prices = inventory.get_item_prices()
+        numeric = [float(p.replace("$", "")) for p in prices]
+        assert numeric[0] == max(numeric), (
+            f"Highest price ${numeric[0]} should appear first after high-to-low filter"
+        )
+
+    def test_item_count_unchanged_after_applying_filter(
+        self, logged_in_page: Page
+    ) -> None:
+        inventory = InventoryPage(logged_in_page)
+        count_before = inventory.get_item_count()
+        inventory.sort_by("lohi")
+        count_after = inventory.get_item_count()
+        assert count_before == count_after, (
+            "Applying a sort/filter should not change the total number of products"
+        )
+
+
+@pytest.mark.regression
+@pytest.mark.inventory
 class TestProductDetailNavigation:
     ITEM_NAME = "Sauce Labs Backpack"
 

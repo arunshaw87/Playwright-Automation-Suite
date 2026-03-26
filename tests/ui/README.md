@@ -130,3 +130,18 @@ Each page class:
 - Exposes action methods (e.g. `login()`, `add_item_to_cart_by_name()`)
 - Exposes assertion helpers using `playwright.sync_api.expect` (e.g. `expect_title()`)
 - Extends `BasePage` which provides navigation and title helpers
+
+## Fixture Design: Authentication and Isolation
+
+`logged_in_page` is **function-scoped** (fresh browser context per test) while
+authentication is **session-scoped** (login happens once per test run).
+
+How it works:
+1. `auth_storage_state` (session scope) — performs a real login once, then calls
+   `context.storage_state(path=...)` to snapshot cookies and localStorage to a temp file.
+2. `logged_in_page` (function scope) — creates a brand-new `BrowserContext` loaded from
+   that snapshot for every test, then navigates to `/inventory.html`.
+
+This gives each test an **identical, isolated starting state** (empty cart, clean DOM)
+while paying the login cost only once per session run — the best of both worlds.
+Tests that mutate cart state (add/remove items) do not affect each other.

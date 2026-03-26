@@ -1,8 +1,7 @@
 import logging
 import os
-import tempfile
 import pytest
-from playwright.sync_api import Browser, BrowserContext, Page, Playwright
+from playwright.sync_api import Browser, Page
 
 
 logger = logging.getLogger(__name__)
