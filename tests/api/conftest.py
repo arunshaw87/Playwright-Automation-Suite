@@ -79,11 +79,13 @@ def auth_token(base_url: str) -> str | None:
         logger.info("Auth endpoint not found (404) — running without token")
         return None
 
-    logger.warning(
-        "Auth endpoint returned HTTP %d — token not available",
-        response.status_code,
+    # Unexpected status (e.g., 500, 503) — log and fail fast so the root cause
+    # is clearly visible rather than cascading into auth-dependent test failures.
+    raise RuntimeError(
+        f"Auth endpoint returned unexpected HTTP {response.status_code} "
+        f"during session setup. URL: {AUTH_PATH}. "
+        f"Fix the server or update API credentials."
     )
-    return None
 
 
 @pytest.fixture(scope="session")

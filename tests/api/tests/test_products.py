@@ -282,6 +282,12 @@ class TestDeleteProduct:
         assert response.status_code in (200, 204), (
             f"Expected 200 or 204 on delete, got {response.status_code}"
         )
+        if response.status_code == 204:
+            assert response.content == b"", (
+                "HTTP 204 must have no response body"
+            )
+        else:
+            assert_schema(response, ProductResponse)
 
     def test_delete_product_then_get_returns_404(
         self, api_client: httpx.Client
