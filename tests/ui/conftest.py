@@ -15,12 +15,6 @@ DEFAULT_PASSWORD = "secret_sauce"
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    config.addinivalue_line("markers", "smoke: Quick smoke tests — run on every commit")
-    config.addinivalue_line("markers", "regression: Full regression suite")
-    config.addinivalue_line("markers", "login: Login-related tests")
-    config.addinivalue_line("markers", "inventory: Inventory/product tests")
-    config.addinivalue_line("markers", "cart: Shopping cart tests")
-    config.addinivalue_line("markers", "checkout: Checkout flow tests")
     for directory in (
         "reports/html",
         "reports/junit",
