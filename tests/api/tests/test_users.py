@@ -4,6 +4,10 @@ User CRUD endpoint tests.
 Covers: GET /api/users, GET /api/users/{id},
         POST /api/users, PUT /api/users/{id}, DELETE /api/users/{id}
 
+Every response is validated against a Pydantic v2 schema:
+- Success responses → UserResponse / UserListResponse
+- Error responses   → ErrorResponse
+
 All tests are skipped when the /api/users endpoint returns 404,
 meaning they are not implemented on the target server.
 """
@@ -51,6 +55,7 @@ class TestGetUsers:
         _skip_if_unavailable(api_client)
         response = api_client.get(USERS_PATH)
         assert_status(response, 200)
+        assert_schema(response, UserListResponse)
 
     def test_list_users_content_type_json(self, api_client: httpx.Client) -> None:
         _skip_if_unavailable(api_client)
@@ -78,6 +83,7 @@ class TestGetUsers:
         _skip_if_unavailable(unauth_client)
         response = unauth_client.get(USERS_PATH)
         assert_error_response(response, 401)
+        assert_schema(response, ErrorResponse)
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +114,7 @@ class TestGetSingleUser:
         _skip_if_unavailable(api_client)
         response = api_client.get(f"{USERS_PATH}/999999999")
         assert_error_response(response, 404)
+        assert_schema(response, ErrorResponse)
 
     def test_get_invalid_user_id_returns_4xx(
         self, api_client: httpx.Client
@@ -117,6 +124,7 @@ class TestGetSingleUser:
         assert response.status_code in (400, 404, 422), (
             f"Expected 4xx for invalid user ID, got {response.status_code}"
         )
+        assert_schema(response, ErrorResponse)
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +141,7 @@ class TestCreateUser:
         payload = make_user_payload()
         response = api_client.post(USERS_PATH, json=payload)
         assert_status(response, 201)
+        assert_schema(response, UserResponse)
 
     def test_create_user_response_schema_valid(
         self, api_client: httpx.Client
@@ -155,6 +164,7 @@ class TestCreateUser:
         assert response.status_code in (400, 409, 422), (
             f"Expected 4xx for duplicate email, got {response.status_code}"
         )
+        assert_schema(response, ErrorResponse)
 
     def test_create_user_missing_email_returns_422(
         self, api_client: httpx.Client
@@ -165,6 +175,7 @@ class TestCreateUser:
         assert response.status_code in (400, 422), (
             f"Expected 400 or 422 for missing email, got {response.status_code}"
         )
+        assert_schema(response, ErrorResponse)
 
     def test_create_user_empty_body_returns_422(
         self, api_client: httpx.Client
@@ -174,6 +185,7 @@ class TestCreateUser:
         assert response.status_code in (400, 422), (
             f"Expected 400 or 422 for empty body, got {response.status_code}"
         )
+        assert_schema(response, ErrorResponse)
 
     def test_create_user_unauthenticated_returns_401(
         self, unauth_client: httpx.Client
@@ -181,6 +193,7 @@ class TestCreateUser:
         _skip_if_unavailable(unauth_client)
         response = unauth_client.post(USERS_PATH, json=make_user_payload())
         assert_error_response(response, 401)
+        assert_schema(response, ErrorResponse)
 
 
 # ---------------------------------------------------------------------------
@@ -205,6 +218,7 @@ class TestUpdateUser:
         update_payload = make_partial_user_payload()
         response = api_client.put(f"{USERS_PATH}/{user['id']}", json=update_payload)
         assert_status(response, 200)
+        assert_schema(response, UserResponse)
 
     def test_update_user_reflects_changes(self, api_client: httpx.Client) -> None:
         _skip_if_unavailable(api_client)
@@ -226,6 +240,7 @@ class TestUpdateUser:
             f"{USERS_PATH}/999999999", json=make_partial_user_payload()
         )
         assert_error_response(response, 404)
+        assert_schema(response, ErrorResponse)
 
 
 # ---------------------------------------------------------------------------
@@ -262,6 +277,7 @@ class TestDeleteUser:
         api_client.delete(f"{USERS_PATH}/{user['id']}")
         response = api_client.get(f"{USERS_PATH}/{user['id']}")
         assert_error_response(response, 404)
+        assert_schema(response, ErrorResponse)
 
     def test_delete_nonexistent_user_returns_404(
         self, api_client: httpx.Client
@@ -269,3 +285,4 @@ class TestDeleteUser:
         _skip_if_unavailable(api_client)
         response = api_client.delete(f"{USERS_PATH}/999999999")
         assert_error_response(response, 404)
+        assert_schema(response, ErrorResponse)

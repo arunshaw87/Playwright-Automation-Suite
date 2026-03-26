@@ -4,6 +4,10 @@ Product CRUD endpoint tests.
 Covers: GET /api/products, GET /api/products/{id},
         POST /api/products, PUT /api/products/{id}, DELETE /api/products/{id}
 
+Every response is validated against a Pydantic v2 schema:
+- Success responses → ProductResponse / ProductListResponse
+- Error responses   → ErrorResponse
+
 All tests are skipped when /api/products returns 404,
 meaning the endpoint is not implemented on the target server.
 """
@@ -12,7 +16,7 @@ from __future__ import annotations
 import pytest
 import httpx
 
-from models.responses import ProductResponse, ProductListResponse
+from models.responses import ProductResponse, ProductListResponse, ErrorResponse
 from utils.validators import (
     assert_status,
     assert_schema,
@@ -51,6 +55,7 @@ class TestGetProducts:
         _skip_if_unavailable(api_client)
         response = api_client.get(PRODUCTS_PATH)
         assert_status(response, 200)
+        assert_schema(response, ProductListResponse)
 
     def test_list_products_content_type_json(self, api_client: httpx.Client) -> None:
         _skip_if_unavailable(api_client)
@@ -78,6 +83,7 @@ class TestGetProducts:
         _skip_if_unavailable(unauth_client)
         response = unauth_client.get(PRODUCTS_PATH)
         assert_error_response(response, 401)
+        assert_schema(response, ErrorResponse)
 
     def test_list_products_pagination_query_params(
         self, api_client: httpx.Client
@@ -118,6 +124,7 @@ class TestGetSingleProduct:
         _skip_if_unavailable(api_client)
         response = api_client.get(f"{PRODUCTS_PATH}/999999999")
         assert_error_response(response, 404)
+        assert_schema(response, ErrorResponse)
 
     def test_get_invalid_product_id_returns_4xx(
         self, api_client: httpx.Client
@@ -127,6 +134,7 @@ class TestGetSingleProduct:
         assert response.status_code in (400, 404, 422), (
             f"Expected 4xx for invalid product ID, got {response.status_code}"
         )
+        assert_schema(response, ErrorResponse)
 
 
 # ---------------------------------------------------------------------------
@@ -143,6 +151,7 @@ class TestCreateProduct:
         payload = make_product_payload()
         response = api_client.post(PRODUCTS_PATH, json=payload)
         assert_status(response, 201)
+        assert_schema(response, ProductResponse)
 
     def test_create_product_schema_valid(self, api_client: httpx.Client) -> None:
         _skip_if_unavailable(api_client)
@@ -163,6 +172,7 @@ class TestCreateProduct:
         assert response.status_code in (400, 422), (
             f"Expected 400 or 422 for missing name, got {response.status_code}"
         )
+        assert_schema(response, ErrorResponse)
 
     def test_create_product_missing_price_returns_422(
         self, api_client: httpx.Client
@@ -174,6 +184,7 @@ class TestCreateProduct:
         assert response.status_code in (400, 422), (
             f"Expected 400 or 422 for missing price, got {response.status_code}"
         )
+        assert_schema(response, ErrorResponse)
 
     def test_create_product_negative_price_returns_422(
         self, api_client: httpx.Client
@@ -184,6 +195,7 @@ class TestCreateProduct:
         assert response.status_code in (400, 422), (
             f"Expected 400 or 422 for negative price, got {response.status_code}"
         )
+        assert_schema(response, ErrorResponse)
 
     def test_create_product_unauthenticated_returns_401(
         self, unauth_client: httpx.Client
@@ -191,6 +203,7 @@ class TestCreateProduct:
         _skip_if_unavailable(unauth_client)
         response = unauth_client.post(PRODUCTS_PATH, json=make_product_payload())
         assert_error_response(response, 401)
+        assert_schema(response, ErrorResponse)
 
 
 # ---------------------------------------------------------------------------
@@ -217,6 +230,7 @@ class TestUpdateProduct:
             f"{PRODUCTS_PATH}/{product['id']}", json=payload
         )
         assert_status(response, 200)
+        assert_schema(response, ProductResponse)
 
     def test_update_product_reflects_new_price(
         self, api_client: httpx.Client
@@ -242,6 +256,7 @@ class TestUpdateProduct:
             f"{PRODUCTS_PATH}/999999999", json=make_partial_product_payload()
         )
         assert_error_response(response, 404)
+        assert_schema(response, ErrorResponse)
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +293,7 @@ class TestDeleteProduct:
         api_client.delete(f"{PRODUCTS_PATH}/{product['id']}")
         response = api_client.get(f"{PRODUCTS_PATH}/{product['id']}")
         assert_error_response(response, 404)
+        assert_schema(response, ErrorResponse)
 
     def test_delete_nonexistent_product_returns_404(
         self, api_client: httpx.Client
@@ -285,3 +301,4 @@ class TestDeleteProduct:
         _skip_if_unavailable(api_client)
         response = api_client.delete(f"{PRODUCTS_PATH}/999999999")
         assert_error_response(response, 404)
+        assert_schema(response, ErrorResponse)
