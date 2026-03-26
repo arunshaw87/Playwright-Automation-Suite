@@ -13,6 +13,7 @@ echo "  Users: 5 | Spawn rate: 1/s | Duration: 1m"
 
 locust \
   -f "$SCRIPT_DIR/locustfile.py" \
+  --config "$SCRIPT_DIR/locust.conf" \
   --headless \
   --users 5 \
   --spawn-rate 1 \

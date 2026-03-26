@@ -1,4 +1,4 @@
-from config.load_profiles import (
+from .load_profiles import (
     LoadProfile,
     SMOKE,
     SOAK,
