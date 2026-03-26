@@ -69,8 +69,8 @@ def main() -> int:
         return 2
 
     if total_rows == 0:
-        print("WARNING: No request rows found in CSV — load test may not have run", file=sys.stderr)
-        return 0
+        print("ERROR: No request rows found in CSV — load test may not have run or produced no traffic", file=sys.stderr)
+        return 1
 
     if violations:
         print(f"\n{'='*60}")

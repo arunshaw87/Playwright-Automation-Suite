@@ -37,6 +37,10 @@ services:
 
   # --------------------------------------------------------
   # API Tests (Pytest + HTTPX + Pydantic v2)
+  # NOTE: API_BASE_URL is intentionally hardcoded to the intra-compose
+  # service hostname. Do NOT override it with a localhost URL when using
+  # docker compose — the test container cannot reach the host network.
+  # To target a remote server instead, set COMPOSE_API_BASE_URL.
   # --------------------------------------------------------
   api-tests:
     build:
@@ -46,7 +50,7 @@ services:
       api-server:
         condition: service_healthy
     environment:
-      API_BASE_URL: "${API_BASE_URL:-http://api-server:80}"
+      API_BASE_URL: "${COMPOSE_API_BASE_URL:-http://api-server:80}"
       API_USERNAME: "${API_USERNAME:-admin}"
       API_PASSWORD: "${API_PASSWORD:-password}"
       API_AUTH_PATH: "${API_AUTH_PATH:-/api/auth/login}"
@@ -72,6 +76,10 @@ services:
 
   # --------------------------------------------------------
   # Load Tests (Locust — smoke profile by default)
+  # NOTE: LOCUST_HOST / --host are intentionally defaulted to the intra-compose
+  # service hostname. Do NOT override with a localhost URL when using docker
+  # compose — the test container cannot reach the host network.
+  # To target a remote server instead, set COMPOSE_LOCUST_HOST.
   # --------------------------------------------------------
   load-tests:
     build:
@@ -81,7 +89,7 @@ services:
       api-server:
         condition: service_healthy
     environment:
-      LOCUST_HOST: "${LOCUST_HOST:-http://api-server:80}"
+      LOCUST_HOST: "${COMPOSE_LOCUST_HOST:-http://api-server:80}"
       API_USERNAME: "${API_USERNAME:-admin}"
       API_PASSWORD: "${API_PASSWORD:-password}"
       API_AUTH_PATH: "${API_AUTH_PATH:-/api/auth/login}"
@@ -96,7 +104,7 @@ services:
       - "--run-time"
       - "${LOCUST_RUN_TIME:-1m}"
       - "--host"
-      - "${LOCUST_HOST:-http://api-server:80}"
+      - "${COMPOSE_LOCUST_HOST:-http://api-server:80}"
       - "--html"
       - "reports/load/smoke_report.html"
       - "--csv"
