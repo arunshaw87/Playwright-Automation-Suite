@@ -8,8 +8,8 @@ Covers: POST /api/auth/login
 - 422 on missing required fields (response body validated against ErrorResponse schema)
 - 400 on empty payload (response body validated against ErrorResponse schema)
 
-All tests are skipped if the auth endpoint is not available on the target server
-(indicated by the endpoint returning 404).
+All tests are skipped when the auth endpoint returns HTTP 404 (endpoint not implemented).
+Any other unexpected error causes the test to fail fast rather than being silently skipped.
 """
 from __future__ import annotations
 
@@ -26,23 +26,13 @@ VALID_PASS = "password"
 
 
 def _auth_available(client: httpx.Client) -> bool:
-    """Return True if the auth endpoint exists on the target server."""
-    try:
-        r = client.post(AUTH_PATH, json=make_login_payload())
-        return r.status_code != 404
-    except Exception:
-        return False
+    """Return True if the auth endpoint exists (not 404) on the target server.
 
-
-def _assert_error_schema(response: httpx.Response) -> ErrorResponse:
-    """Validate an error response body against ErrorResponse schema.
-
-    Returns the parsed ErrorResponse for further assertions.
+    Only skips on an explicit 404 response. Any other HTTP status or
+    connection error propagates as a test failure (fail fast).
     """
-    try:
-        return assert_schema(response, ErrorResponse)
-    except AssertionError:
-        return ErrorResponse()
+    r = client.post(AUTH_PATH, json=make_login_payload())
+    return r.status_code != 404
 
 
 @pytest.mark.regression
@@ -72,8 +62,7 @@ class TestAuthLogin:
         payload = make_login_payload(username=VALID_USER, password="WRONG_PASSWORD")
         response = unauth_client.post(AUTH_PATH, json=payload)
         assert_error_response(response, 401)
-        error = _assert_error_schema(response)
-        assert error is not None, "Error response body must be parseable as ErrorResponse"
+        assert_schema(response, ErrorResponse)
 
     def test_unknown_username_returns_401(self, unauth_client: httpx.Client) -> None:
         if not _auth_available(unauth_client):
@@ -81,8 +70,7 @@ class TestAuthLogin:
         payload = make_login_payload(username="no_such_user_xyz", password=VALID_PASS)
         response = unauth_client.post(AUTH_PATH, json=payload)
         assert_error_response(response, 401)
-        error = _assert_error_schema(response)
-        assert error is not None, "Error response body must be parseable as ErrorResponse"
+        assert_schema(response, ErrorResponse)
 
     def test_missing_username_returns_422(self, unauth_client: httpx.Client) -> None:
         if not _auth_available(unauth_client):

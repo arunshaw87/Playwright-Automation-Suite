@@ -30,11 +30,9 @@ PRODUCTS_PATH = "/api/products"
 
 
 def _products_available(client: httpx.Client) -> bool:
-    try:
-        r = client.get(PRODUCTS_PATH)
-        return r.status_code != 404
-    except Exception:
-        return False
+    """Return True when endpoint exists (not 404). Non-404 errors propagate as failures."""
+    r = client.get(PRODUCTS_PATH)
+    return r.status_code != 404
 
 
 def _skip_if_unavailable(client: httpx.Client) -> None:

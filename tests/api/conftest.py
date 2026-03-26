@@ -51,26 +51,38 @@ def auth_token(base_url: str) -> str | None:
     """
     Session-scoped fixture that obtains a Bearer token once per session.
 
-    Attempts POST ``/api/auth/login``. If the endpoint does not exist on the
-    target server (404 / connection error), returns None and marks auth-
-    dependent tests as skipped via the ``api_client`` fixture.
+    Attempts POST ``/api/auth/login``.
+    - Returns a token string on HTTP 200.
+    - Returns None silently on HTTP 404 (endpoint not implemented on this server).
+    - Raises on any other HTTP error or unexpected status (fail fast).
+    - Returns None on network-level errors (ConnectError/Timeout) — appropriate
+      for a session setup fixture where the API may be starting up.
     """
     payload = {"username": API_USERNAME, "password": API_PASSWORD}
     try:
         with httpx.Client(base_url=base_url, timeout=REQUEST_TIMEOUT) as client:
             response = client.post(AUTH_PATH, json=payload)
-        if response.status_code == 200:
-            data = response.json()
-            token = data.get("token") or data.get("access_token")
-            if token:
-                logger.info("Auth token acquired successfully")
-                return str(token)
-        logger.warning(
-            "Auth endpoint returned HTTP %d — token not available",
-            response.status_code,
-        )
     except (httpx.ConnectError, httpx.TimeoutException) as exc:
         logger.warning("Could not reach auth endpoint: %s", exc)
+        return None
+
+    if response.status_code == 200:
+        data = response.json()
+        token = data.get("token") or data.get("access_token")
+        if token:
+            logger.info("Auth token acquired successfully")
+            return str(token)
+        logger.warning("Auth response missing token field")
+        return None
+
+    if response.status_code == 404:
+        logger.info("Auth endpoint not found (404) — running without token")
+        return None
+
+    logger.warning(
+        "Auth endpoint returned HTTP %d — token not available",
+        response.status_code,
+    )
     return None
 
 
