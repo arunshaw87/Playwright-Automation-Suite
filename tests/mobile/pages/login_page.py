@@ -9,17 +9,31 @@ from __future__ import annotations
 
 from typing import Any
 
-from appium.webdriver.common.appiumby import AppiumBy
 from pages.base_page import BasePage
 
 
 class LoginPage(BasePage):
     # Locators — using accessibility IDs for cross-platform compatibility
-    USERNAME_FIELD = (AppiumBy.ACCESSIBILITY_ID, "test-Username")
-    PASSWORD_FIELD = (AppiumBy.ACCESSIBILITY_ID, "test-Password")
-    LOGIN_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "test-LOGIN")
-    ERROR_MESSAGE = (AppiumBy.XPATH, "//*[contains(@text,'Username and password')]")
-    ERROR_CONTAINER = (AppiumBy.ACCESSIBILITY_ID, "test-Error message")
+    @staticmethod
+    def _by():
+        from appium.webdriver.common.appiumby import AppiumBy
+        return AppiumBy
+
+    @property
+    def USERNAME_FIELD(self):
+        return (self._by().ACCESSIBILITY_ID, "test-Username")
+
+    @property
+    def PASSWORD_FIELD(self):
+        return (self._by().ACCESSIBILITY_ID, "test-Password")
+
+    @property
+    def LOGIN_BUTTON(self):
+        return (self._by().ACCESSIBILITY_ID, "test-LOGIN")
+
+    @property
+    def ERROR_CONTAINER(self):
+        return (self._by().ACCESSIBILITY_ID, "test-Error message")
 
     def __init__(self, driver: Any) -> None:
         super().__init__(driver)

@@ -5,20 +5,26 @@ from __future__ import annotations
 
 from typing import Any
 
-from appium.webdriver.common.appiumby import AppiumBy
 from pages.base_page import BasePage
 
 
 class ProductListPage(BasePage):
-    SORT_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "test-Modal Selector Button")
-    PRODUCT_ITEMS = (
-        AppiumBy.XPATH,
-        "//*[@content-desc='test-Item title']",
-    )
-    FIRST_PRODUCT_TITLE = (
-        AppiumBy.XPATH,
-        "(//*[@content-desc='test-Item title'])[1]",
-    )
+    @staticmethod
+    def _by():
+        from appium.webdriver.common.appiumby import AppiumBy
+        return AppiumBy
+
+    @property
+    def SORT_BUTTON(self):
+        return (self._by().ACCESSIBILITY_ID, "test-Modal Selector Button")
+
+    @property
+    def PRODUCT_ITEMS(self):
+        return (self._by().XPATH, "//*[@content-desc='test-Item title']")
+
+    @property
+    def FIRST_PRODUCT_TITLE(self):
+        return (self._by().XPATH, "(//*[@content-desc='test-Item title'])[1]")
 
     def __init__(self, driver: Any) -> None:
         super().__init__(driver)

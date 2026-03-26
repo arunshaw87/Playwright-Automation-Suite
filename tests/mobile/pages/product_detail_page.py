@@ -5,16 +5,34 @@ from __future__ import annotations
 
 from typing import Any
 
-from appium.webdriver.common.appiumby import AppiumBy
 from pages.base_page import BasePage
 
 
 class ProductDetailPage(BasePage):
-    PRODUCT_TITLE = (AppiumBy.ACCESSIBILITY_ID, "test-Description")
-    ADD_TO_CART_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "test-ADD TO CART")
-    REMOVE_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "test-REMOVE")
-    BACK_BUTTON = (AppiumBy.ACCESSIBILITY_ID, "test-GO BACK")
-    PRODUCT_PRICE = (AppiumBy.ACCESSIBILITY_ID, "test-Price")
+    @staticmethod
+    def _by():
+        from appium.webdriver.common.appiumby import AppiumBy
+        return AppiumBy
+
+    @property
+    def PRODUCT_TITLE(self):
+        return (self._by().ACCESSIBILITY_ID, "test-Description")
+
+    @property
+    def ADD_TO_CART_BUTTON(self):
+        return (self._by().ACCESSIBILITY_ID, "test-ADD TO CART")
+
+    @property
+    def REMOVE_BUTTON(self):
+        return (self._by().ACCESSIBILITY_ID, "test-REMOVE")
+
+    @property
+    def BACK_BUTTON(self):
+        return (self._by().ACCESSIBILITY_ID, "test-GO BACK")
+
+    @property
+    def PRODUCT_PRICE(self):
+        return (self._by().ACCESSIBILITY_ID, "test-Price")
 
     def __init__(self, driver: Any) -> None:
         super().__init__(driver)

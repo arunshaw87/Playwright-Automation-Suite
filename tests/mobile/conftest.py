@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
 import pytest
 
@@ -19,10 +20,12 @@ logger = logging.getLogger(__name__)
 MOBILE_PLATFORM = os.environ.get("MOBILE_PLATFORM", "android").lower()
 APPIUM_SERVER_URL = os.environ.get("APPIUM_SERVER_URL", "http://localhost:4723")
 
+_MOBILE_DIR = Path(__file__).parent
+
 
 def pytest_configure(config: pytest.Config) -> None:
-    for directory in ("reports/html", "reports/junit", "reports/screenshots"):
-        os.makedirs(directory, exist_ok=True)
+    for sub in ("reports/html", "reports/junit", "reports/screenshots"):
+        (_MOBILE_DIR / sub).mkdir(parents=True, exist_ok=True)
 
 
 def _appium_available() -> bool:
@@ -100,14 +103,15 @@ def ios_driver():
 
 
 @pytest.fixture(scope="function")
-def driver(android_driver, ios_driver):
+def driver(request):
     """
     Resolves to the appropriate driver based on MOBILE_PLATFORM env var.
+    Lazily requests only the needed platform fixture to avoid spinning up
+    both Android and iOS sessions.
     Defaults to android.
     """
-    if MOBILE_PLATFORM == "ios":
-        return ios_driver
-    return android_driver
+    fixture_name = "ios_driver" if MOBILE_PLATFORM == "ios" else "android_driver"
+    return request.getfixturevalue(fixture_name)
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -116,14 +120,18 @@ def pytest_runtest_makereport(item, call):
     outcome = yield
     report = outcome.get_result()
     if report.when == "call" and report.failed:
-        driver = item.funcargs.get("driver") or item.funcargs.get("android_driver") or item.funcargs.get("ios_driver")
-        if driver:
+        drv = (
+            item.funcargs.get("driver")
+            or item.funcargs.get("android_driver")
+            or item.funcargs.get("ios_driver")
+        )
+        if drv:
             try:
-                screenshots_dir = "reports/screenshots"
-                os.makedirs(screenshots_dir, exist_ok=True)
+                screenshots_dir = _MOBILE_DIR / "reports" / "screenshots"
+                screenshots_dir.mkdir(parents=True, exist_ok=True)
                 safe_name = item.nodeid.replace("::", "_").replace("/", "_")
-                path = f"{screenshots_dir}/{safe_name}.png"
-                driver.save_screenshot(path)
+                path = screenshots_dir / f"{safe_name}.png"
+                drv.save_screenshot(str(path))
                 logger.info("Failure screenshot saved: %s", path)
             except Exception as exc:
                 logger.warning("Could not save screenshot on failure: %s", exc)
