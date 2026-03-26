@@ -9,12 +9,14 @@ on:
 env:
   PYTHON_VERSION: "3.13"
   NODE_VERSION: "24"
-  API_BASE_URL: "http://localhost:80"
+  # P99 latency ceiling for the load smoke run (milliseconds)
+  LOAD_P99_THRESHOLD_MS: "2000"
 
 jobs:
   # ============================================================
   # API Tests — always runs, skips endpoints that are not yet
   # implemented (404 responses are treated as graceful skips).
+  # Uses a Dockerised API server to keep the environment consistent.
   # ============================================================
   api-tests:
     name: API Tests
@@ -42,36 +44,34 @@ jobs:
       - name: Install API test dependencies
         run: pip install -r requirements-api.txt
 
-      - name: Set up Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Start API server
+      - name: Build and start API server container
         working-directory: .
         run: |
-          pnpm install --frozen-lockfile
-          pnpm --filter @workspace/api-server run build
-          pnpm --filter @workspace/api-server run start &
-          echo "Waiting for API server..."
-          timeout 30 bash -c 'until curl -sf http://localhost:80/api/healthz; do sleep 1; done'
-          echo "API server is ready"
+          docker compose build api-server
+          docker compose up -d api-server
+          echo "Waiting for API server container health check..."
+          timeout 60 bash -c '
+            until docker compose ps api-server | grep -q "healthy"; do
+              sleep 2
+            done
+          '
+          echo "API server container is healthy"
         env:
-          NODE_ENV: production
-          PORT: "80"
+          API_SERVER_HOST_PORT: "8080"
+          API_SERVER_PORT: "80"
 
       - name: Run API tests
         env:
-          API_BASE_URL: ${{ env.API_BASE_URL }}
+          API_BASE_URL: "http://localhost:8080"
         run: |
           python -m pytest tests/ \
             --tb=short \
             -v
+
+      - name: Tear down API server container
+        if: always()
+        working-directory: .
+        run: docker compose down api-server
 
       - name: Upload JUnit XML + HTML reports
         if: always()
@@ -140,7 +140,9 @@ jobs:
 
   # ============================================================
   # Load Tests — smoke profile only in CI (1 min, 5 users)
-  # Runs after API tests pass to confirm the server is stable
+  # Runs after API tests pass to confirm the server is stable.
+  # Uses the same Dockerised API server as the api-tests job.
+  # Fails if any P99 latency exceeds LOAD_P99_THRESHOLD_MS.
   # ============================================================
   load-tests-smoke:
     name: Load Tests (Smoke)
@@ -169,27 +171,21 @@ jobs:
       - name: Install Locust
         run: pip install -r requirements-load.txt
 
-      - name: Set up Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Start API server
+      - name: Build and start API server container
         working-directory: .
         run: |
-          pnpm install --frozen-lockfile
-          pnpm --filter @workspace/api-server run build
-          pnpm --filter @workspace/api-server run start &
-          timeout 30 bash -c 'until curl -sf http://localhost:80/api/healthz; do sleep 1; done'
-          echo "API server ready"
+          docker compose build api-server
+          docker compose up -d api-server
+          echo "Waiting for API server container health check..."
+          timeout 60 bash -c '
+            until docker compose ps api-server | grep -q "healthy"; do
+              sleep 2
+            done
+          '
+          echo "API server container is healthy"
         env:
-          NODE_ENV: production
-          PORT: "80"
+          API_SERVER_HOST_PORT: "8080"
+          API_SERVER_PORT: "80"
 
       - name: Run Locust smoke test
         run: |
@@ -200,10 +196,21 @@ jobs:
             --users 5 \
             --spawn-rate 1 \
             --run-time 1m \
-            --host http://localhost:80 \
+            --host http://localhost:8080 \
             --html reports/load/smoke_report.html \
             --csv reports/load/smoke \
             --exit-code-on-error 1
+
+      - name: Enforce P99 latency threshold (${{ env.LOAD_P99_THRESHOLD_MS }} ms)
+        run: |
+          python scripts/check_p99_threshold.py \
+            reports/load/smoke_stats.csv \
+            --threshold-ms ${{ env.LOAD_P99_THRESHOLD_MS }}
+
+      - name: Tear down API server container
+        if: always()
+        working-directory: .
+        run: docker compose down api-server
 
       - name: Upload load test report
         if: always()

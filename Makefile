@@ -1,9 +1,10 @@
 .PHONY: help \
-        install install-api install-ui install-load install-mobile \
-        test-api test-ui test-load test-mobile test-all test-smoke \
-        docker-build docker-test-api docker-test-ui docker-test-load \
-        lint lint-api lint-ui lint-load lint-mobile \
-        clean clean-reports
+	install install-api install-ui install-load install-mobile \
+	test-api test-ui test-load test-mobile test-all test-smoke \
+	check-load-p99 \
+	docker-build docker-test-api docker-test-ui docker-test-load \
+	lint lint-api lint-ui lint-load lint-mobile \
+	clean clean-reports
 
 PYTHON     := python3.13
 API_BASE_URL  ?= http://localhost:80
@@ -49,6 +50,10 @@ help:
 	@echo "  Cleanup"
 	@echo "    clean-reports     Remove all generated reports"
 	@echo "    clean             Remove reports + Python cache files"
+	@echo ""
+	@echo "  Load SLA"
+	@echo "    check-load-p99    Enforce P99 threshold against last load CSV"
+	@echo "                      Usage: make check-load-p99 CSV=tests/load/reports/load/smoke_stats.csv"
 	@echo ""
 	@echo "  Variables (override on the CLI, e.g. make test-ui BROWSER=firefox)"
 	@echo "    API_BASE_URL      $(API_BASE_URL)"
@@ -97,6 +102,13 @@ test-ui:
 # Load test — smoke profile (1 min, 5 users, headless)
 test-load:
 	cd tests/load && ./run_smoke.sh $(LOCUST_HOST)
+
+# Enforce P99 latency SLA on a Locust CSV output file
+# Usage: make check-load-p99 CSV=tests/load/reports/load/smoke_stats.csv [P99_MS=2000]
+CSV    ?= tests/load/reports/load/smoke_stats.csv
+P99_MS ?= 2000
+check-load-p99:
+	$(PYTHON) tests/load/scripts/check_p99_threshold.py $(CSV) --threshold-ms $(P99_MS)
 
 # Mobile tests — skips automatically if Appium server is unreachable
 test-mobile:
@@ -160,7 +172,8 @@ lint-load:
 	$(PYTHON) -m py_compile \
 	tests/load/locustfile.py \
 	tests/load/config/load_profiles.py \
-	tests/load/utils/auth_helper.py
+	tests/load/utils/auth_helper.py \
+	tests/load/scripts/check_p99_threshold.py
 	@echo "Load lint: OK"
 
 lint-mobile:
