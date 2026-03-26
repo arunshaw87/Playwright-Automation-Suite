@@ -40,15 +40,40 @@ def page(browser: Browser) -> Page:
     context.close()
 
 
-@pytest.fixture(scope="function")
-def logged_in_page(page: Page) -> Page:
+@pytest.fixture(scope="session")
+def logged_in_browser_context(browser: Browser):
+    """
+    Session-scoped browser context for all tests that need an authenticated session.
+    Each test calling `logged_in_page` gets a fresh page within this authenticated
+    context, so the session cookie is reused but tab state is isolated.
+    """
+    context = browser.new_context(
+        base_url=BASE_URL,
+        viewport={"width": 1280, "height": 720},
+    )
+    page = context.new_page()
     from pages.login_page import LoginPage
 
     login = LoginPage(page)
     login.open()
     login.login(STANDARD_USER, DEFAULT_PASSWORD)
     page.wait_for_url("**/inventory.html")
+    page.close()
+    yield context
+    context.close()
+
+
+@pytest.fixture(scope="function")
+def logged_in_page(logged_in_browser_context: BrowserContext) -> Page:
+    """
+    Function-scoped page within the session-scoped authenticated context.
+    Each test gets a fresh tab so DOM/cart state cannot bleed between tests,
+    while re-using the session-level authentication cookie.
+    """
+    page = logged_in_browser_context.new_page()
+    page.goto(f"{BASE_URL}/inventory.html")
     yield page
+    page.close()
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
