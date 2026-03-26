@@ -48,7 +48,11 @@ class TestCheckoutHappyPath:
         CheckoutStepOnePage(logged_in_page).continue_checkout()
         CheckoutStepTwoPage(logged_in_page).finish_checkout()
         complete = CheckoutCompletePage(logged_in_page)
-        assert "dispatched" in complete.get_complete_text().lower() or complete.get_complete_text() != ""
+        complete_text = complete.get_complete_text()
+        assert complete_text.strip() != "", "Completion text should not be empty"
+        assert "order" in complete_text.lower() or "dispatched" in complete_text.lower(), (
+            f"Expected order-related text in completion message, got: {complete_text!r}"
+        )
 
     def test_back_home_after_order(self, logged_in_page: Page) -> None:
         add_item_and_go_to_checkout(logged_in_page)
