@@ -1,0 +1,8 @@
+pytest==8.3.4
+httpx==0.28.1
+pydantic==2.10.5
+faker==33.3.1
+pytest-html==4.1.1
+pytest-xdist==3.6.1
+pytest-rerunfailures==14.0
+respx==0.22.0

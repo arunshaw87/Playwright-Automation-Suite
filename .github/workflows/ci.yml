@@ -1,0 +1,224 @@
+name: Test Suite CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  PYTHON_VERSION: "3.13"
+  API_BASE_URL: "http://localhost:80"
+
+jobs:
+  # ============================================================
+  # API Tests — always runs (no external dependencies)
+  # ============================================================
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-api-${{ hashFiles('tests/api/requirements-api.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-api-
+
+      - name: Install API test dependencies
+        run: pip install -r requirements-api.txt
+
+      - name: Start API server
+        working-directory: .
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @workspace/api-server run dev &
+          echo "Waiting for API server to start..."
+          timeout 30 bash -c 'until curl -sf http://localhost:80/api/healthz; do sleep 1; done'
+          echo "API server is ready"
+
+      - name: Run API tests
+        env:
+          API_BASE_URL: ${{ env.API_BASE_URL }}
+        run: |
+          python -m pytest tests/ \
+            --tb=short \
+            -v \
+            --junitxml=reports/junit/results.xml
+
+      - name: Upload JUnit XML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-results
+          path: tests/api/reports/junit/results.xml
+
+  # ============================================================
+  # UI Tests — browser matrix (Chromium and Firefox)
+  # ============================================================
+  ui-tests:
+    name: UI Tests (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    defaults:
+      run:
+        working-directory: tests/ui
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-ui-${{ hashFiles('tests/ui/requirements-ui.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-ui-
+
+      - name: Install UI test dependencies
+        run: pip install -r requirements-ui.txt
+
+      - name: Install Playwright browsers
+        run: python -m playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run UI tests
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: |
+          python -m pytest tests/ \
+            --browser ${{ matrix.browser }} \
+            --tb=short \
+            -v \
+            --junitxml=reports/junit/results-${{ matrix.browser }}.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-results-${{ matrix.browser }}
+          path: |
+            tests/ui/reports/junit/
+            tests/ui/reports/screenshots/
+
+  # ============================================================
+  # Load Tests — smoke profile only in CI (headless, 1 min, 5 users)
+  # Runs after API tests pass
+  # ============================================================
+  load-tests-smoke:
+    name: Load Tests (Smoke)
+    runs-on: ubuntu-latest
+    needs: [api-tests]
+    defaults:
+      run:
+        working-directory: tests/load
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-load-${{ hashFiles('tests/load/requirements-load.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-load-
+
+      - name: Install Locust
+        run: pip install -r requirements-load.txt
+
+      - name: Start API server
+        working-directory: .
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @workspace/api-server run dev &
+          timeout 30 bash -c 'until curl -sf http://localhost:80/api/healthz; do sleep 1; done'
+
+      - name: Run Locust smoke test
+        run: |
+          mkdir -p reports/load
+          locust \
+            -f locustfile.py \
+            --headless \
+            --users 5 \
+            --spawn-rate 1 \
+            --run-time 1m \
+            --host http://localhost:80 \
+            --html reports/load/smoke_report.html \
+            --csv reports/load/smoke \
+            --exit-code-on-error 1
+
+      - name: Upload load test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-smoke-results
+          path: tests/load/reports/load/
+
+  # ============================================================
+  # Mobile Tests — manual / device-cloud only, skipped in default CI
+  # Set ENABLE_MOBILE_TESTS=true on the runner to activate
+  # ============================================================
+  mobile-tests:
+    name: Mobile Tests
+    runs-on: ubuntu-latest
+    if: ${{ vars.ENABLE_MOBILE_TESTS == 'true' }}
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: tests/mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install mobile test dependencies
+        run: pip install -r requirements-mobile.txt
+
+      - name: Run mobile tests
+        env:
+          APPIUM_SERVER_URL: ${{ vars.APPIUM_SERVER_URL }}
+          ANDROID_APP_PATH: ${{ vars.ANDROID_APP_PATH }}
+          MOBILE_PLATFORM: android
+        run: |
+          python -m pytest tests/ \
+            --tb=short \
+            -v \
+            --junitxml=reports/junit/results.xml
+
+      - name: Upload mobile test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-test-results
+          path: |
+            tests/mobile/reports/junit/
+            tests/mobile/reports/screenshots/

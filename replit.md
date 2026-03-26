@@ -94,3 +94,45 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+
+---
+
+## Python E2E Test Framework
+
+All test suites live alongside the TypeScript monorepo in `tests/`. Python 3.13 required.
+
+### Structure
+
+```
+tests/
+├── ui/           # Pytest + Playwright + POM targeting https://www.saucedemo.com
+├── api/          # Pytest + HTTPX + Pydantic v2 (targets REST API)
+├── mobile/       # Pytest + Appium 2.x + POM (Android + iOS)
+├── load/         # Locust (4 HttpUser classes, 4 load profiles)
+└── README.md     # Top-level guide
+```
+
+### Quick commands
+
+```bash
+make test-smoke              # API health smoke — always works
+make test-api                # Full API suite (skips endpoints not on server)
+make test-ui BROWSER=chromium
+make test-load               # Locust smoke (1 min, 5 users)
+make test-all                # API + UI + load
+```
+
+### CI/CD
+
+- `.github/workflows/ci.yml` — GitHub Actions (API + UI matrix + load smoke)
+- `Dockerfile.api`, `Dockerfile.ui`, `Dockerfile.load` — per-suite images
+- `docker-compose.yml` — orchestrates all containers
+- `docker-compose.mobile.yml` — Appium server + mobile tests
+- `.env.example` — all env vars documented
+
+### Key design decisions
+
+- API tests skip gracefully when endpoints return 404 (health tests always run)
+- Mobile tests skip automatically when Appium server is unreachable
+- Load test `locustfile.py` models 70% read / 20% write / 10% auth traffic mix
+- Each suite has its own `requirements-*.txt`, `pytest.ini`, and `README.md`

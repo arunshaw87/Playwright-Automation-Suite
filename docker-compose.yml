@@ -1,0 +1,94 @@
+version: "3.9"
+
+# ============================================================
+# Test orchestration
+#
+# Usage:
+#   docker compose run api-tests        # API tests only
+#   docker compose run ui-tests         # UI tests (Chromium by default)
+#   docker compose run load-tests       # Smoke load test
+#   docker compose up api-server        # API server only (for manual testing)
+# ============================================================
+
+services:
+  # --------------------------------------------------------
+  # API Server (Express)
+  # --------------------------------------------------------
+  api-server:
+    build:
+      context: .
+      dockerfile: artifacts/api-server/Dockerfile
+    environment:
+      PORT: "80"
+      DATABASE_URL: "${DATABASE_URL:-}"
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/api/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # --------------------------------------------------------
+  # API Tests
+  # --------------------------------------------------------
+  api-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    depends_on:
+      api-server:
+        condition: service_healthy
+    environment:
+      API_BASE_URL: "http://api-server:80"
+      API_USERNAME: "${API_USERNAME:-admin}"
+      API_PASSWORD: "${API_PASSWORD:-password}"
+    volumes:
+      - ./tests/api/reports:/app/tests/api/reports
+    command: ["tests/", "--tb=short", "-v"]
+
+  # --------------------------------------------------------
+  # UI Tests (Playwright + POM)
+  # --------------------------------------------------------
+  ui-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    environment:
+      BASE_URL: "${UI_BASE_URL:-https://www.saucedemo.com}"
+      BROWSER: "${BROWSER:-chromium}"
+    volumes:
+      - ./tests/ui/reports:/app/tests/ui/reports
+    command: ["tests/", "--tb=short", "-v", "--browser=${BROWSER:-chromium}"]
+
+  # --------------------------------------------------------
+  # Load Tests (Locust — smoke profile)
+  # --------------------------------------------------------
+  load-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.load
+    depends_on:
+      api-server:
+        condition: service_healthy
+    environment:
+      LOCUST_HOST: "http://api-server:80"
+      API_USERNAME: "${API_USERNAME:-admin}"
+      API_PASSWORD: "${API_PASSWORD:-password}"
+    volumes:
+      - ./tests/load/reports:/app/tests/load/reports
+    command:
+      - "--headless"
+      - "--users"
+      - "5"
+      - "--spawn-rate"
+      - "1"
+      - "--run-time"
+      - "1m"
+      - "--html"
+      - "reports/load/smoke_report.html"
+      - "--csv"
+      - "reports/load/smoke"
+      - "--exit-code-on-error"
+      - "1"

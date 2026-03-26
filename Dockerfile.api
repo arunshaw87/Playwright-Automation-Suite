@@ -1,0 +1,17 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+COPY tests/api/requirements-api.txt .
+RUN pip install --no-cache-dir -r requirements-api.txt
+
+COPY tests/api/ ./tests/api/
+
+WORKDIR /app/tests/api
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    API_BASE_URL=http://api-server:80
+
+ENTRYPOINT ["python", "-m", "pytest", "tests/"]
+CMD ["--tb=short", "-v"]

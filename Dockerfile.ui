@@ -1,0 +1,23 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY tests/ui/requirements-ui.txt .
+RUN pip install --no-cache-dir -r requirements-ui.txt
+
+RUN python -m playwright install --with-deps chromium firefox
+
+COPY tests/ui/ ./tests/ui/
+
+WORKDIR /app/tests/ui
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+ENTRYPOINT ["python", "-m", "pytest", "tests/"]
+CMD ["--tb=short", "-v"]

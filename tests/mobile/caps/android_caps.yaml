@@ -1,0 +1,32 @@
+# Android desired capabilities for Appium 2.x
+# Sensitive values are read from environment variables at runtime
+# (see driver_factory.py for the loading logic)
+
+platformName: Android
+appium:automationName: UiAutomator2
+
+# Device identification
+# Override via ANDROID_DEVICE_NAME env var
+appium:deviceName: emulator-5554
+
+# App under test — set ANDROID_APP_PATH env var to a local .apk path
+# or ANDROID_APP_ID for an already-installed app
+# appium:app: /path/to/app.apk
+# appium:appPackage: com.example.app
+# appium:appActivity: .MainActivity
+
+# Timeouts (milliseconds)
+appium:newCommandTimeout: 120
+appium:androidInstallTimeout: 90000
+appium:adbExecTimeout: 20000
+
+# Session and reset strategy
+appium:noReset: false
+appium:fullReset: false
+appium:autoGrantPermissions: true
+
+# Logging
+appium:printPageSourceOnFindFailure: true
+
+# Appium server URL — override via APPIUM_SERVER_URL env var
+# default: http://localhost:4723

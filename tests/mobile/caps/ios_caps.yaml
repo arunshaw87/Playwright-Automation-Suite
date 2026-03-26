@@ -1,0 +1,32 @@
+# iOS desired capabilities for Appium 2.x
+# Sensitive values are read from environment variables at runtime
+# (see driver_factory.py for the loading logic)
+
+platformName: iOS
+appium:automationName: XCUITest
+
+# Device identification
+# Override via IOS_DEVICE_NAME / IOS_PLATFORM_VERSION env vars
+appium:deviceName: iPhone 15 Simulator
+appium:platformVersion: "17.5"
+
+# App under test — set IOS_APP_PATH env var to a local .app/.ipa path
+# or IOS_BUNDLE_ID for an already-installed app
+# appium:app: /path/to/app.app
+# appium:bundleId: com.example.app
+
+# Timeouts (seconds)
+appium:newCommandTimeout: 120
+appium:launchTimeout: 60000
+appium:wdaLaunchTimeout: 120000
+
+# Session and reset strategy
+appium:noReset: false
+appium:fullReset: false
+
+# XCUITest-specific
+appium:usePrebuiltWDA: false
+appium:showXcodeLog: false
+
+# Appium server URL — override via APPIUM_SERVER_URL env var
+# default: http://localhost:4723

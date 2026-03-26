@@ -1,0 +1,17 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+COPY tests/load/requirements-load.txt .
+RUN pip install --no-cache-dir -r requirements-load.txt
+
+COPY tests/load/ ./tests/load/
+
+WORKDIR /app/tests/load
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    LOCUST_HOST=http://api-server:80
+
+ENTRYPOINT ["locust", "-f", "locustfile.py"]
+CMD ["--headless", "--users", "5", "--spawn-rate", "1", "--run-time", "1m"]

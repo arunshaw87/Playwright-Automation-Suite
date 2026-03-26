@@ -1,0 +1,16 @@
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "faker==33.3.1",
+    "httpx==0.28.1",
+    "locust==2.32.3",
+    "pydantic==2.10.5",
+    "pytest==8.3.4",
+    "pytest-html==4.1.1",
+    "pytest-rerunfailures==14.0",
+    "pytest-xdist==3.6.1",
+    "respx==0.22.0",
+]
