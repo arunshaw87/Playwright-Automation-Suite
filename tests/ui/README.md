@@ -20,7 +20,6 @@ tests/ui/
 │   └── test_checkout.py          # Full E2E checkout flow, field validation, order summary
 ├── conftest.py                   # Browser/page fixtures, logged_in_page, screenshot-on-failure
 ├── pytest.ini                    # Pytest configuration and marker declarations
-├── pyproject.toml                # Alternate pytest config (pyproject style)
 ├── requirements-ui.txt           # Pinned Python dependencies
 └── README.md                     # This file
 ```

@@ -1,6 +1,9 @@
+import logging
+import os
 import pytest
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright
 
+logger = logging.getLogger(__name__)
 
 BASE_URL = "https://www.saucedemo.com"
 STANDARD_USER = "standard_user"
@@ -17,6 +20,12 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "inventory: Inventory/product tests")
     config.addinivalue_line("markers", "cart: Shopping cart tests")
     config.addinivalue_line("markers", "checkout: Checkout flow tests")
+    for directory in (
+        "reports/html",
+        "reports/junit",
+        "reports/screenshots",
+    ):
+        os.makedirs(directory, exist_ok=True)
 
 
 @pytest.fixture(scope="session")
@@ -84,10 +93,14 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):
     if rep.when == "call" and rep.failed:
         page: Page | None = item.funcargs.get("page") or item.funcargs.get("logged_in_page")  # type: ignore[assignment]
         if page is not None:
-            screenshot_path = f"reports/screenshots/{item.nodeid.replace('/', '_').replace('::', '_')}.png"
+            safe_node = item.nodeid.replace("/", "_").replace("::", "_")
+            screenshot_path = f"reports/screenshots/{safe_node}.png"
             try:
-                import os
-                os.makedirs("reports/screenshots", exist_ok=True)
                 page.screenshot(path=screenshot_path, full_page=True)
-            except Exception:
-                pass
+                logger.info("Failure screenshot saved: %s", screenshot_path)
+            except Exception as exc:
+                logger.warning(
+                    "Could not capture failure screenshot for %s: %s",
+                    item.nodeid,
+                    exc,
+                )
