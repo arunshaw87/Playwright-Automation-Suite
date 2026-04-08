@@ -1,10 +1,25 @@
 import logging
 import os
+import shutil
 import pytest
 from playwright.sync_api import Browser, Page
 
 
 logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args: dict) -> dict:
+    """
+    Override the Chromium executable with the system-installed Chromium when the
+    Playwright-downloaded headless shell is unavailable (e.g., on NixOS where shared
+    libraries are managed by Nix rather than the OS package manager).
+    """
+    system_chromium = shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("google-chrome")
+    if system_chromium:
+        logger.info("Using system Chromium: %s", system_chromium)
+        return {**browser_type_launch_args, "executable_path": system_chromium}
+    return browser_type_launch_args
 
 BASE_URL = "https://www.saucedemo.com"
 STANDARD_USER = "standard_user"
