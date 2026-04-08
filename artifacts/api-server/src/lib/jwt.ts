@@ -8,7 +8,7 @@ export interface JwtPayload {
   username: string;
   iat: number;
   exp: number;
-  jti: string;
+  jti?: string;
 }
 
 export function signToken(payload: Omit<JwtPayload, "iat" | "exp" | "jti">): string {

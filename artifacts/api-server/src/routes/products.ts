@@ -34,6 +34,17 @@ router.get("/products/:id", (req: Request, res: Response) => {
   res.status(200).json(product);
 });
 
+function parseStock(value: unknown): number | null {
+  if (value === undefined || value === null) return null;
+  const n = Number(value);
+  return isNaN(n) ? null : n;
+}
+
+function parseDescription(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  return String(value);
+}
+
 router.post("/products", (req: Request, res: Response) => {
   const { name, description, price, stock } = req.body ?? {};
 
@@ -54,10 +65,15 @@ router.post("/products", (req: Request, res: Response) => {
     return;
   }
 
-  const stockNum = stock !== undefined && stock !== null ? Number(stock) : null;
+  const stockNum = stock !== undefined ? parseStock(stock) : null;
+  if (stock !== undefined && stock !== null && stockNum === null) {
+    res.status(422).json({ error: "Unprocessable Entity", message: "stock must be a number or null" });
+    return;
+  }
+
   const product = store.createProduct(
     String(name),
-    description !== undefined ? String(description) : null,
+    description !== undefined ? parseDescription(description) : null,
     priceNum,
     stockNum,
   );
@@ -77,7 +93,7 @@ router.put("/products/:id", (req: Request, res: Response) => {
   const { name, description, price, stock } = req.body ?? {};
   const fields: Parameters<typeof store.updateProduct>[1] = {};
   if (name !== undefined) fields.name = String(name);
-  if (description !== undefined) fields.description = String(description);
+  if (description !== undefined) fields.description = parseDescription(description);
   if (price !== undefined) {
     const priceNum = Number(price);
     if (isNaN(priceNum) || priceNum < 0) {
@@ -86,7 +102,18 @@ router.put("/products/:id", (req: Request, res: Response) => {
     }
     fields.price = priceNum;
   }
-  if (stock !== undefined) fields.stock = stock !== null ? Number(stock) : null;
+  if (stock !== undefined) {
+    if (stock === null) {
+      fields.stock = null;
+    } else {
+      const stockNum = Number(stock);
+      if (isNaN(stockNum)) {
+        res.status(422).json({ error: "Unprocessable Entity", message: "stock must be a number or null" });
+        return;
+      }
+      fields.stock = stockNum;
+    }
+  }
   const updated = store.updateProduct(id, fields);
   res.status(200).json(updated);
 });
