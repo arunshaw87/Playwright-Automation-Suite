@@ -5,8 +5,8 @@ export interface User {
   username: string;
   email: string;
   passwordHash: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Product {
@@ -15,8 +15,8 @@ export interface Product {
   description: string | null;
   price: number;
   stock: number | null;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 function hashPassword(password: string): string {
@@ -45,12 +45,12 @@ class Store {
       username: "admin",
       email: "admin@example.com",
       passwordHash: hashPassword("password"),
-      createdAt: ts,
-      updatedAt: ts,
+      created_at: ts,
+      updated_at: ts,
     });
     this.userIdSeq = 2;
 
-    const sampleProducts: Omit<Product, "id" | "createdAt" | "updatedAt">[] = [
+    const sampleProducts: Omit<Product, "id" | "created_at" | "updated_at">[] = [
       { name: "Widget Alpha", description: "A sturdy widget", price: 9.99, stock: 100 },
       { name: "Gadget Beta", description: "A compact gadget", price: 24.99, stock: 50 },
       { name: "Doohickey Gamma", description: "A versatile doohickey", price: 4.49, stock: 200 },
@@ -62,7 +62,7 @@ class Store {
 
     for (const p of sampleProducts) {
       const id = this.productIdSeq++;
-      this.products.set(id, { id, ...p, createdAt: ts, updatedAt: ts });
+      this.products.set(id, { id, ...p, created_at: ts, updated_at: ts });
     }
   }
 
@@ -70,12 +70,14 @@ class Store {
     for (const user of this.users.values()) {
       if (user.username === username) return user;
     }
+    return undefined;
   }
 
   findUserByEmail(email: string): User | undefined {
     for (const user of this.users.values()) {
       if (user.email === email) return user;
     }
+    return undefined;
   }
 
   findUserById(id: number): User | undefined {
@@ -97,8 +99,8 @@ class Store {
       username,
       email,
       passwordHash: hashPassword(password),
-      createdAt: ts,
-      updatedAt: ts,
+      created_at: ts,
+      updated_at: ts,
     };
     this.users.set(id, user);
     return user;
@@ -110,7 +112,7 @@ class Store {
     if (fields.username !== undefined) user.username = fields.username;
     if (fields.email !== undefined) user.email = fields.email;
     if (fields.password !== undefined) user.passwordHash = hashPassword(fields.password);
-    user.updatedAt = now();
+    user.updated_at = now();
     this.users.set(id, user);
     return user;
   }
@@ -137,7 +139,7 @@ class Store {
   createProduct(name: string, description: string | null, price: number, stock: number | null): Product {
     const id = this.productIdSeq++;
     const ts = now();
-    const product: Product = { id, name, description, price, stock, createdAt: ts, updatedAt: ts };
+    const product: Product = { id, name, description, price, stock, created_at: ts, updated_at: ts };
     this.products.set(id, product);
     return product;
   }
@@ -149,7 +151,7 @@ class Store {
     if (fields.description !== undefined) product.description = fields.description;
     if (fields.price !== undefined) product.price = fields.price;
     if (fields.stock !== undefined) product.stock = fields.stock;
-    product.updatedAt = now();
+    product.updated_at = now();
     this.products.set(id, product);
     return product;
   }

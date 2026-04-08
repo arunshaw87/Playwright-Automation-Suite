@@ -21,7 +21,7 @@ router.get("/products", (req: Request, res: Response) => {
 });
 
 router.get("/products/:id", (req: Request, res: Response) => {
-  const id = parseInt(req.params["id"] ?? "", 10);
+  const id = parseInt(String(req.params["id"] ?? ""), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad Request", message: "Invalid product ID" });
     return;
@@ -65,7 +65,7 @@ router.post("/products", (req: Request, res: Response) => {
 });
 
 router.put("/products/:id", (req: Request, res: Response) => {
-  const id = parseInt(req.params["id"] ?? "", 10);
+  const id = parseInt(String(req.params["id"] ?? ""), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad Request", message: "Invalid product ID" });
     return;
@@ -92,7 +92,7 @@ router.put("/products/:id", (req: Request, res: Response) => {
 });
 
 router.delete("/products/:id", (req: Request, res: Response) => {
-  const id = parseInt(req.params["id"] ?? "", 10);
+  const id = parseInt(String(req.params["id"] ?? ""), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad Request", message: "Invalid product ID" });
     return;

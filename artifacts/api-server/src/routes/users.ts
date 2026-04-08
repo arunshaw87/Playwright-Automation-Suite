@@ -27,7 +27,7 @@ router.get("/users", (req: Request, res: Response) => {
 });
 
 router.get("/users/:id", (req: Request, res: Response) => {
-  const id = parseInt(req.params["id"] ?? "", 10);
+  const id = parseInt(String(req.params["id"] ?? ""), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad Request", message: "Invalid user ID" });
     return;
@@ -66,7 +66,7 @@ router.post("/users", (req: Request, res: Response) => {
 });
 
 router.put("/users/:id", (req: Request, res: Response) => {
-  const id = parseInt(req.params["id"] ?? "", 10);
+  const id = parseInt(String(req.params["id"] ?? ""), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad Request", message: "Invalid user ID" });
     return;
@@ -85,7 +85,7 @@ router.put("/users/:id", (req: Request, res: Response) => {
 });
 
 router.delete("/users/:id", (req: Request, res: Response) => {
-  const id = parseInt(req.params["id"] ?? "", 10);
+  const id = parseInt(String(req.params["id"] ?? ""), 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad Request", message: "Invalid user ID" });
     return;
