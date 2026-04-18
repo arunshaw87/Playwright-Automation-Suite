@@ -130,6 +130,15 @@ make test-all                # API + UI + load
 - `docker-compose.mobile.yml` — Appium server + mobile tests
 - `.env.example` — all env vars documented
 
+---
+
+## Git Workflow
+
+- **Repository**: https://github.com/arunshaw87/Playwright-Automation-Suite
+- **Default branch**: `main`
+- **Branch strategy**: Every new task gets its own branch (`task/<slug>`), then merges into `main` via PR or direct merge when complete.
+- **Credentials**: PAT stored in `~/.git-credentials` via `git credential.helper store`; remote URL is clean (`https://github.com/...`).
+
 ### Key design decisions
 
 - API tests skip gracefully when endpoints return 404 (health tests always run)
